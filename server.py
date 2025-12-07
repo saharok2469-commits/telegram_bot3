@@ -7,7 +7,7 @@ from bot import bot, dp
 app = Flask(__name__)
 
 TOKEN = os.environ.get("BOT_TOKEN")
-WEBHOOK_URL = os.environ.get("WEBHOOK_URL")  # пример: https://telegram-bot2-7lj8.onrender.com
+WEBHOOK_URL = os.environ.get("WEBHOOK_URL")  # https://telegram-bot3.onrender.com
 WEBHOOK_PATH = "/webhook"
 
 
@@ -16,7 +16,7 @@ def home():
     return "Bot is running!"
 
 
-# --- Webhook принимает обновления синхронно, но вызывает async внутри ---
+# --- Webhook handler (Flask должен быть sync) ---
 @app.route(WEBHOOK_PATH, methods=["POST"])
 def webhook_handler():
     update_data = request.get_json()
@@ -26,19 +26,17 @@ def webhook_handler():
 
     update = types.Update(**update_data)
 
-    # Запускаем async обработку
     asyncio.run(dp.feed_update(bot, update))
-
     return "ok"
 
 
-# --- Установка webhook ---
-@app.before_first_request
-def setup_webhook():
-    async def set_hook():
-        await bot.set_webhook(WEBHOOK_URL + WEBHOOK_PATH)
+# --- Установка webhook при импорте модуля ---
+async def setup_webhook():
+    await bot.set_webhook(WEBHOOK_URL + WEBHOOK_PATH)
 
-    asyncio.run(set_hook())
+
+# Запускаем установку webhook ПРИ ЗАГРУЗКЕ серверного модуля
+asyncio.get_event_loop().run_until_complete(setup_webhook())
 
 
 if __name__ == "__main__":
